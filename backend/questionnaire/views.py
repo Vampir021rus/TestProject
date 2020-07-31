@@ -28,11 +28,8 @@ class QuestionnaireListView(APIView):
 
     def get(self, request):
         qs = Questionnaire.objects.all()
-        data = []
-        for questionnaire in qs:
-            serializer = self.serializer_class(questionnaire)
-            data.append(serializer.data)
-        return Response(data, status=status.HTTP_200_OK)
+        serializer = self.serializer_class(qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         data = json.loads(request.body)
