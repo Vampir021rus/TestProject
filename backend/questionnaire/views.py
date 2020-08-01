@@ -4,13 +4,17 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 
 from rest_framework import status
+from rest_framework import generics
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
+from rest_framework.generics import GenericAPIView
+from rest_framework.mixins import ListModelMixin, CreateModelMixin
 
-from questionnaire.api.serializers import LoginSerializer, QuestionnaireSerializer, QuestionSerializer, AnswerSerializer, ResultSerializer
+from questionnaire.api.serializers import LoginSerializer, QuestionnaireSerializer, QuestionSerializer, AnswerSerializer
 from .models import Questionnaire, Question, Answer, Result
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -22,166 +26,68 @@ class LoginView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class QuestionnaireListView(APIView):
+class QuestionnaireListView(ListModelMixin, CreateModelMixin, GenericAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = QuestionnaireSerializer
+    queryset = Questionnaire.objects.all()
+    
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
 
-    def get(self, request):
-        qs = Questionnaire.objects.all()
-        serializer = self.serializer_class(qs, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request):
-        data = json.loads(request.body)
-        serializer = self.serializer_class(data=data)
-        if serializer.is_valid():
-            obj = serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
 
-class QuestionnaireDetailView(APIView):
+class QuestionnaireDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = QuestionnaireSerializer
-
-    def get_object(self, pk):
-        try:
-            return Questionnaire.objects.get(pk=pk)
-        except Questionnaire.DoesNotExist:
-            raise Http404
-
-    def get(self, request, pk, format=None):
-        questionnaire = self.get_object(pk)
-        serializer = self.serializer_class(questionnaire)
-        return Response(serializer.data)
-
-    def put(self, request, pk, format=None):
-        questionnaire = self.get_object(pk)
-        serializer = self.serializer_class(questionnaire, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk, format=None):
-        questionnaire = self.get_object(pk)
-        questionnaire.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    queryset = Questionnaire.objects.all()
 
 
-class QuestionListView(APIView):
+class QuestionListView(ListModelMixin, CreateModelMixin, GenericAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = QuestionSerializer
+    queryset = Question.objects.all()
 
-    def get(self, request, pk, format=None):
-        qs = Question.objects.filter(questionnaire=pk)
-        data = []
-        for question in qs:
-            serializer = self.serializer_class(question)
-            data.append(serializer.data)
-        return Response(data, status=status.HTTP_200_OK)
+    def get(self, request, pk_questionnaire, *args, **kwargs):
+        self.queryset = self.queryset.filter(questionnaire=pk_questionnaire)
+        return self.list(request, *args, **kwargs)
 
-    def post(self, request, pk, format=None):
-        data = json.loads(request.body)
-        data['questionnaire']=pk
-        serializer = self.serializer_class(data=data)
-        if serializer.is_valid():
-            obj = serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
 
-class QuestionDetailView(APIView):
+class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = QuestionSerializer
-
-    def get_object(self, pk):
-        try:
-            return Question.objects.get(pk=pk)
-        except Question.DoesNotExist:
-            raise Http404
-
-    def get(self, request, pk, pk_quest, format=None):
-        question = self.get_object(pk_quest)
-        serializer = self.serializer_class(question)
-        return Response(serializer.data)
-
-    def put(self, request, pk, pk_quest, format=None):
-        question = self.get_object(pk_quest)
-        data=request.data        
-        print(data)
-        serializer = self.serializer_class(question, data=data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk, pk_quest, format=None):
-        question = self.get_object(pk_quest)
-        question.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    queryset = Question.objects.all()
 
 
-class AnswerListView(APIView):
+class AnswerListView(ListModelMixin, CreateModelMixin, GenericAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = AnswerSerializer
+    queryset = Answer.objects.all()
 
-    def get(self, request, pk,pk_quest, format=None):
-        qs = Answer.objects.filter(question=pk_quest)
-        data = []
-        for question in qs:
-            serializer = self.serializer_class(question)
-            data.append(serializer.data)
-        return Response(data, status=status.HTTP_200_OK)
+    def get(self, request, pk_questionnaire, pk_quest, format=None):
+        self.queryset = self.queryset.filter(question=pk_quest)
+        return self.list(request, *args, **kwargs)
 
-    def post(self, request, pk, pk_quest, format=None):
-        data = json.loads(request.body)
-        data['question']=pk_quest
-        serializer = self.serializer_class(data=data)
-        if serializer.is_valid():
-            obj = serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, format=None):
+        return self.create(request, *args, **kwargs)
 
 
-class AnswerDetailView(APIView):
+class AnswerDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = AnswerSerializer
-
-    def get_object(self, pk):
-        try:
-            return Answer.objects.get(pk=pk)
-        except Answer.DoesNotExist:
-            raise Http404
-
-    def get(self, request, pk, pk_quest, pk_answer, format=None):
-        answer = self.get_object(pk_answer)
-        serializer = self.serializer_class(answer)
-        return Response(serializer.data)
-
-    def put(self, request, pk, pk_quest, pk_answer, format=None):
-        answer = self.get_object(pk_answer)
-        serializer = self.serializer_class(answer, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk, pk_quest, pk_answer, format=None):
-        answer = self.get_object(pk_answer)
-        answer.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    queryset = Answer.objects.all()
 
 
-class QuestionnaireActiveListView(APIView):
+class QuestionnaireActiveListView(ListModelMixin, GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = QuestionnaireSerializer
+    queryset = Questionnaire.objects.all()
 
     def get(self, request):
         dt = datetime.now()
-        qs = Questionnaire.objects.filter(date_start__lt=dt, date_end__gt=dt)
-        data = []
-        for questionnaire in qs:
-            serializer = self.serializer_class(questionnaire)
-            data.append(serializer.data)
-        return Response(data, status=status.HTTP_200_OK)
+        self.queryset = self.queryset.filter(date_start__lt=dt, date_end__gt=dt)
+        return self.list(request, *args, **kwargs)
