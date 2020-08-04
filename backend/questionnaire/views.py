@@ -47,10 +47,11 @@ class QuestionnaireDetailView(generics.RetrieveUpdateDestroyAPIView):
 class QuestionListView(ListModelMixin, CreateModelMixin, GenericAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = QuestionSerializer
-    queryset = Question.objects.all()
 
-    def get(self, request, pk_questionnaire, *args, **kwargs):
-        self.queryset = self.queryset.filter(questionnaire=pk_questionnaire)
+    def get_queryset(self):
+        return Question.objects.all()
+
+    def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
@@ -66,10 +67,11 @@ class QuestionDetailView(generics.RetrieveUpdateDestroyAPIView):
 class AnswerListView(ListModelMixin, CreateModelMixin, GenericAPIView):
     permission_classes = [IsAdminUser]
     serializer_class = AnswerSerializer
-    queryset = Answer.objects.all()
 
-    def get(self, request, pk_questionnaire, pk_quest, format=None):
-        self.queryset = self.queryset.filter(question=pk_quest)
+    def get_queryset(self):
+        return Answer.objects.all()
+
+    def get(self, request, format=None):
         return self.list(request, *args, **kwargs)
 
     def post(self, request, format=None):
@@ -85,9 +87,10 @@ class AnswerDetailView(generics.RetrieveUpdateDestroyAPIView):
 class QuestionnaireActiveListView(ListModelMixin, GenericAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = QuestionnaireSerializer
-    queryset = Questionnaire.objects.all()
+
+    def get_queryset(self):        
+        dt = datetime.now()
+        return Questionnaire.objects.filter(date_start__lt=dt, date_end__gt=dt)
 
     def get(self, request):
-        dt = datetime.now()
-        self.queryset = self.queryset.filter(date_start__lt=dt, date_end__gt=dt)
         return self.list(request, *args, **kwargs)
